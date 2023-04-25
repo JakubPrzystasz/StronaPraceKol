@@ -46,6 +46,7 @@
                 <div class="col text-right">
                     <h5>Adres email:</h5>
                 </div>
+                
 
                 <div class="col text-left">
                     {% if user.email|length == 0 %}
@@ -53,6 +54,33 @@
                     {% else %}
                         <p> {{ user.email }} </p>
                     {% endif %}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col text-right">
+                    <h5>Miasto:</h5>
+                </div>
+
+                <div class="col text-left">
+                    <p> {{ userdetail.city }} </p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col text-right">
+                    <h5>Ulica:</h5>
+                </div>
+
+                <div class="col text-left">
+                    <p> {{ userdetail.street }} </p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col text-right">
+                    <h5>Numer domu/mieszkania:</h5>
+                </div>
+
+                <div class="col text-left">
+                    <p> {{ userdetail.number }} </p>
                 </div>
             </div>
 

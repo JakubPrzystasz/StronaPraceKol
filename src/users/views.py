@@ -184,6 +184,8 @@ class ProfileView(LoginRequiredMixin, TemplateView):
         # Create any data and add it to the context
         context['site_name'] = 'profile'
         context['site_title'] = f'Ustawienia konta - {SITE_NAME}'
+        context['userdetail']=UserDetail.objects.get(user=self.request.user) 
+        # Additional info about living place /\ /\
         return context
 
 
