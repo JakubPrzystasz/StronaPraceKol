@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from braces.views import CsrfExemptMixin
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -12,10 +13,16 @@ from django.urls import reverse_lazy
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
 from django.views.static import serve
+from django.template.loader import get_template
+from django.core.files.base import ContentFile
+from datetime import datetime
+from django.utils import timezone
+from django.utils.safestring import mark_safe
 from StronaProjektyKol.settings import SITE_NAME, BASE_DIR
 from .filters import PaperFilter
 from .forms import *
-
+from weasyprint import HTML
+from weasyprint.text.fonts import FontConfiguration
 
 class PaperListView(LoginRequiredMixin, ListView):
     model = Paper
@@ -193,9 +200,79 @@ class PaperCreateView(LoginRequiredMixin, CreateView):
         return super(PaperCreateView, self).form_valid(form)
 
     def get_success_url(self):
-        messages.success(self.request, f'Dodano artykuł')
+        paper = self.object
+        co_authors = paper.coauthor_set.all()
+        self.get_pdf_author()
+        for co_author in co_authors:
+            self.get_pdf_co_author(co_author)
+
+        messages.success(self.request, f'Dodano artykuł, możesz pobrać oświadczenie z uzupełnionymi danymi')
         return str('/papers/')
 
+    def get_pdf_author(self):
+        template = get_template("papers/statementAuthor.htm")
+        context = {'pagesize': 'A4'}
+        html = template.render(context)
+        html = self.insert_author_data_to_html(html)
+        font_config = FontConfiguration()
+        pdf_data = HTML(string=html).write_pdf(font_config=font_config)
+        file_content = ContentFile(pdf_data)
+        uploaded_file = UploadedFile(paper=self.object, file=file_content, created_at=datetime.now(tz=timezone.utc))
+        uploaded_file.file.save("Uzupelnione_Oswiadczenie_Autor.pdf", file_content, save=True)
+
+    def get_pdf_co_author(self, co_author):
+        template = get_template("papers/statementCoAuthor.htm")
+        context = {'pagesize': 'A4'}
+        html = template.render(context)
+        html = self.insert_co_author_data_to_html(html, co_author)
+        font_config = FontConfiguration()
+        pdf_data = HTML(string=html).write_pdf(font_config=font_config)
+        file_content = ContentFile(pdf_data)
+        uploaded_file = UploadedFile(paper=self.object, file=file_content, created_at=datetime.now(tz=timezone.utc))
+        uploaded_file.file.save(f"Uzupelnione_Oswiadczenie_{co_author.name}{co_author.surname}.pdf", file_content, save=True)
+
+    def insert_author_data_to_html(self, html):
+        html_string = str(html)
+
+        # User data
+        user = self.request.user
+        user_detail = self.request.user.user_detail
+        html_string = html_string.replace("{first_name}", user.first_name)
+        html_string = html_string.replace("{last_name}", user.last_name)
+        html_string = html_string.replace("{city}", user_detail.city)
+        html_string = html_string.replace("{street}", user_detail.street)
+        html_string = html_string.replace("{number}", user_detail.number)
+
+        # Paper data
+        paper = self.object
+        html_string = html_string.replace("{paper_title}", paper.title)
+
+        # Other data
+        # TODO Set year from panel admin
+        magazine = "Prace Kół Naukowych Politechniki Rzeszowskiej w roku akademickim 2023/2024"
+        html_string = html_string.replace("{magazine}", magazine)
+
+        safe_html = mark_safe(html_string)
+        return safe_html
+
+    def insert_co_author_data_to_html(self, html, co_author):
+        html_string = str(html)
+
+        # Co-Author data
+        html_string = html_string.replace("{first_name}", co_author.name)
+        html_string = html_string.replace("{last_name}", co_author.surname)
+
+        # Paper data
+        paper = self.object
+        html_string = html_string.replace("{paper_title}", paper.title)
+
+        # Other data
+        # TODO Set year from panel admin
+        magazine = "Prace Kół Naukowych Politechniki Rzeszowskiej w roku akademickim 2023/2024"
+        html_string = html_string.replace("{magazine}", magazine)
+
+        safe_html = mark_safe(html_string)
+        return safe_html
 
 class PaperEditView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Paper

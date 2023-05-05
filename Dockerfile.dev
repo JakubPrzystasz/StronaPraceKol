@@ -2,7 +2,13 @@
 FROM python:3.9.6-alpine
 
 RUN apk update && apk upgrade && \
-    apk add --no-cache python3-dev musl-dev jpeg-dev zlib-dev libjpeg 
+    apk add --no-cache python3-dev musl-dev jpeg-dev zlib-dev libjpeg && \
+	apk add --no-cache build-base freetype-dev && \
+    ln -s /usr/include/locale.h /usr/include/xlocale.h && \
+	apk add --no-cache build-base cairo-dev cairo cairo-tools pango-dev gdk-pixbuf-dev libffi-dev && \
+	apk add --no-cache pango pango-dev pangomm libffi gdk-pixbuf-dev py-cairo py3-gobject3 shared-mime-info && \
+	apk add fontconfig && \
+	apk add ttf-opensans
 
 # set work directory
 WORKDIR /usr/src/app/
@@ -20,5 +26,6 @@ RUN pip install -r requirements.txt
 
 COPY ./src/ ./
 
+RUN python manage.py makemigrations
 RUN python manage.py migrate
 RUN python manage.py loaddata announcement grades groups notificationperiod studentclubs
